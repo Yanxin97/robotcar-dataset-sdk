@@ -14,6 +14,8 @@
 
 import argparse
 import os
+
+from scipy import fft
 from radar import load_radar, radar_polar_to_cartesian
 import numpy as np
 import cv2
@@ -45,6 +47,13 @@ for radar_timestamp in radar_timestamps:
         raise FileNotFoundError("Could not find radar example: {}".format(filename))
 
     timestamps, azimuths, valid, fft_data, radar_resolution = load_radar(filename)
+    fft_data = fft_data / fft_data.max() * 1
+    fft_data[fft_data < 0.3] = 0
+    rows,cols, depths = fft_data.shape
+    for row in range(rows):
+        index = fft_data[row].argsort(axis=0)[::-1]
+        (fft_data[row])[fft_data[row] < (fft_data[row])[index[11]]] = 0
+
     cart_img = radar_polar_to_cartesian(azimuths, fft_data, radar_resolution, cart_resolution, cart_pixel_width,
                                         interpolate_crossover)
 
@@ -56,5 +65,5 @@ for radar_timestamp in radar_timestamps:
     fft_data_vis = cv2.resize(fft_data_vis, (0, 0), None, resize_factor, resize_factor)
     vis = cv2.hconcat((fft_data_vis, fft_data_vis[:, :10] * 0 + 1, cart_img))
 
-    cv2.imshow(title, vis * 2.)  # The data is doubled to improve visualisation
+    cv2.imshow(title, vis )  # The data is doubled to improve visualisation
     cv2.waitKey(1)
